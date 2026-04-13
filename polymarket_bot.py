@@ -76,6 +76,15 @@ CHAIN_ID  = 137
 
 DRY_RUN = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
 
+# ─── Proxy residencial (para bypass geoblock) ─────────────────────────────────
+PROXY_URL = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or ""
+if PROXY_URL:
+    # Forzar para todas las librerías que usan requests/httpx
+    os.environ["HTTPS_PROXY"] = PROXY_URL
+    os.environ["HTTP_PROXY"]  = PROXY_URL
+    os.environ["https_proxy"] = PROXY_URL
+    os.environ["http_proxy"]  = PROXY_URL
+
 # ─── Cargar .env ──────────────────────────────────────────────────────────────
 def load_env():
     env_file = Path(__file__).parent / ".env"
@@ -153,7 +162,9 @@ def get_token_ids(market: dict) -> list:
 class GammaClient:
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers["User-Agent"] = "PolyBot/2.0"
+        self.session.headers["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        if PROXY_URL:
+            self.session.proxies = {"http": PROXY_URL, "https": PROXY_URL}
 
     def get_active_markets(self, limit: int = 200) -> list:
         markets = []
