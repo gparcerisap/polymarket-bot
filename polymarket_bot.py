@@ -297,7 +297,7 @@ class PolyClient:
             log.error("ClobClient no disponible")
             return None
         try:
-            from py_clob_client.clob_types import CreateOrderArgs, OrderType
+            from py_clob_client.clob_types import OrderArgs, OrderType
             tick = self._get_tick(token_id)
             snapped = self._snap_price(price, tick)
             if snapped <= 0:
@@ -307,7 +307,7 @@ class PolyClient:
             if tokens <= 0:
                 return None
             log.debug(f"  BUY snapped={snapped} tokens={tokens} usd_real={tokens*snapped:.4f}")
-            args  = CreateOrderArgs(token_id=token_id, price=snapped, size=tokens, side="BUY")
+            args  = OrderArgs(token_id=token_id, price=snapped, size=tokens, side="BUY")
             order = self._clob.create_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.GTC)
@@ -325,14 +325,14 @@ class PolyClient:
             log.error("ClobClient no disponible")
             return None
         try:
-            from py_clob_client.clob_types import CreateOrderArgs, OrderType
+            from py_clob_client.clob_types import OrderArgs, OrderType
             tick = self._get_tick(token_id)
             snapped = self._snap_price(price, tick)
             tokens = round(qty, 2)
             if tokens <= 0:
                 return None
             log.debug(f"  SELL snapped={snapped} tokens={tokens}")
-            args  = CreateOrderArgs(token_id=token_id, price=snapped, size=tokens, side="SELL")
+            args  = OrderArgs(token_id=token_id, price=snapped, size=tokens, side="SELL")
             order = self._clob.create_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.GTC)
