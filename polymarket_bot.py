@@ -77,13 +77,16 @@ CHAIN_ID  = 137
 DRY_RUN = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
 
 # ─── Proxy residencial (para bypass geoblock) ─────────────────────────────────
-PROXY_URL = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or ""
+# Usar variable custom POLY_PROXY para no interferir con el build de Railway
+PROXY_URL = os.environ.get("POLY_PROXY", "")
 if PROXY_URL:
-    # Forzar para todas las librerías que usan requests/httpx
+    # Solo aplicar en runtime del bot, no durante el build
     os.environ["HTTPS_PROXY"] = PROXY_URL
     os.environ["HTTP_PROXY"]  = PROXY_URL
     os.environ["https_proxy"] = PROXY_URL
     os.environ["http_proxy"]  = PROXY_URL
+    log_proxy = PROXY_URL.split("@")[-1] if "@" in PROXY_URL else PROXY_URL
+    # log se configura después, guardar para mostrar luego
 
 # ─── Cargar .env ──────────────────────────────────────────────────────────────
 def load_env():
