@@ -241,9 +241,9 @@ class PolyClient:
                     chain_id=int(os.environ.get("POLY_CHAIN_ID", CHAIN_ID)),
                     key=private_key,
                     creds=creds,
+                    signature_type=1,  # Polymarket EOA wallet (sig_type=1 = funded account)
                 )
-                log.info("✅ ClobClient L2 listo (trading completo)")
-                # Aprobar contratos CLOB automáticamente si hay saldo
+                log.info("✅ ClobClient L2 listo (trading completo, sig_type=1)")
                 self._approve_clob_allowance()
             else:
                 self._clob = ClobClient(
@@ -262,7 +262,7 @@ class PolyClient:
         try:
             from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
             # Chequear balance actual
-            bal = self._clob.get_balance_allowance(params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL))
+            bal = self._clob.get_balance_allowance(params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=1))
             usdc_bal = float(bal.get("balance", 0)) / 1e6
             log.info(f"💳 CLOB balance: ${usdc_bal:.2f} USDC")
             if usdc_bal < 1.0:
