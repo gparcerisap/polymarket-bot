@@ -243,6 +243,8 @@ class PolyClient:
                     creds=creds,
                 )
                 log.info("✅ ClobClient L2 listo (trading completo)")
+                # Aprobar contratos CLOB automáticamente si hay saldo
+                self._approve_clob_allowance()
             else:
                 self._clob = ClobClient(
                     host=CLOB_HOST,
@@ -252,6 +254,23 @@ class PolyClient:
                 log.info("ClobClient L1 — se necesitan API creds para tradear")
         except Exception as e:
             log.warning(f"Error iniciando ClobClient: {e}")
+
+    def _approve_clob_allowance(self):
+        """Aprueba los contratos del CLOB para usar USDC del wallet."""
+        if not self._clob:
+            return
+        try:
+            from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
+            # Chequear balance actual
+            bal = self._clob.get_balance_allowance(params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL))
+            usdc_bal = float(bal.get("balance", 0)) / 1e6
+            log.info(f"💳 CLOB balance: ${usdc_bal:.2f} USDC")
+            if usdc_bal < 1.0:
+                log.info("⚙️  Aprobando contratos CLOB para USDC...")
+                self._clob.update_balance_allowance(params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL))
+                log.info("✅ Contratos aprobados — el CLOB puede usar tus USDC")
+        except Exception as e:
+            log.warning(f"approve_clob_allowance: {e}")
 
     def market_buy(self, token_id: str, usd: float, price: float) -> Optional[dict]:
         if DRY_RUN:
