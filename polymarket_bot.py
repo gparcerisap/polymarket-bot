@@ -299,13 +299,12 @@ class PolyClient:
         try:
             from py_clob_client.clob_types import MarketOrderArgs, OrderType
             tick = self._get_tick(token_id)
-            # Redondear precio al tick más cercano para evitar error de servidor
             snapped = self._snap_price(price, tick)
-            qty = round(usd / snapped, 4) if snapped > 0 else 0
-            if qty <= 0:
+            if snapped <= 0:
                 return None
-            log.debug(f"  BUY price raw={price:.6f} snapped={snapped} tick={tick} qty={qty}")
-            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="BUY", price=snapped)
+            # amount = USD a invertir (no tokens)
+            log.debug(f"  BUY price raw={price:.6f} snapped={snapped} tick={tick} usd={usd}")
+            args  = MarketOrderArgs(token_id=token_id, amount=usd, side="BUY", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.FOK)
@@ -326,8 +325,10 @@ class PolyClient:
             from py_clob_client.clob_types import MarketOrderArgs, OrderType
             tick = self._get_tick(token_id)
             snapped = self._snap_price(price, tick)
-            log.debug(f"  SELL price raw={price:.6f} snapped={snapped} tick={tick}")
-            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="SELL", price=snapped)
+            # Para SELL: amount = qty de tokens * precio = USD a recibir
+            sell_usd = round(qty * snapped, 4)
+            log.debug(f"  SELL price raw={price:.6f} snapped={snapped} tick={tick} sell_usd={sell_usd}")
+            args  = MarketOrderArgs(token_id=token_id, amount=sell_usd, side="SELL", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.FOK)
