@@ -272,6 +272,22 @@ class PolyClient:
         except Exception as e:
             log.warning(f"approve_clob_allowance: {e}")
 
+    @staticmethod
+    def _snap_price(price: float, tick: float = 0.01) -> float:
+        """Redondea el precio al tick size más cercano (default 0.01)."""
+        snapped = round(round(price / tick) * tick, 10)
+        # Asegurar que queda dentro de [tick, 1-tick]
+        snapped = max(tick, min(1.0 - tick, snapped))
+        return snapped
+
+    def _get_tick(self, token_id: str) -> float:
+        """Obtiene el tick size del mercado (con cache del ClobClient)."""
+        try:
+            ts = self._clob.get_tick_size(token_id)
+            return float(ts)
+        except Exception:
+            return 0.01  # default seguro
+
     def market_buy(self, token_id: str, usd: float, price: float) -> Optional[dict]:
         if DRY_RUN:
             log.info(f"  [DRY-RUN] COMPRA {token_id[:14]}… ${usd:.2f} @ {price:.3f}")
@@ -282,10 +298,14 @@ class PolyClient:
             return None
         try:
             from py_clob_client.clob_types import MarketOrderArgs, OrderType
-            qty = round(usd / price, 4) if price > 0 else 0
+            tick = self._get_tick(token_id)
+            # Redondear precio al tick más cercano para evitar error de servidor
+            snapped = self._snap_price(price, tick)
+            qty = round(usd / snapped, 4) if snapped > 0 else 0
             if qty <= 0:
                 return None
-            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="BUY")
+            log.debug(f"  BUY price raw={price:.6f} snapped={snapped} tick={tick} qty={qty}")
+            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="BUY", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.FOK)
@@ -304,7 +324,10 @@ class PolyClient:
             return None
         try:
             from py_clob_client.clob_types import MarketOrderArgs, OrderType
-            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="SELL")
+            tick = self._get_tick(token_id)
+            snapped = self._snap_price(price, tick)
+            log.debug(f"  SELL price raw={price:.6f} snapped={snapped} tick={tick}")
+            args  = MarketOrderArgs(token_id=token_id, amount=qty, side="SELL", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.FOK)
