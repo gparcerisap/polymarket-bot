@@ -291,21 +291,24 @@ class PolyClient:
     def market_buy(self, token_id: str, usd: float, price: float) -> Optional[dict]:
         if DRY_RUN:
             log.info(f"  [DRY-RUN] COMPRA {token_id[:14]}… ${usd:.2f} @ {price:.3f}")
-            return {"order_id": f"dry-{uuid.uuid4().hex[:8]}", "size": str(round(usd / price, 4))}
+            return {"order_id": f"dry-{uuid.uuid4().hex[:8]}", "size": str(round(usd / price, 2))}
 
         if not self._clob:
             log.error("ClobClient no disponible")
             return None
         try:
-            from py_clob_client.clob_types import MarketOrderArgs, OrderType
+            from py_clob_client.clob_types import CreateOrderArgs, OrderType
             tick = self._get_tick(token_id)
             snapped = self._snap_price(price, tick)
             if snapped <= 0:
                 return None
-            # amount = USD a invertir (no tokens)
-            log.debug(f"  BUY price raw={price:.6f} snapped={snapped} tick={tick} usd={usd}")
-            args  = MarketOrderArgs(token_id=token_id, amount=usd, side="BUY", price=snapped)
-            order = self._clob.create_market_order(args)
+            # Tokens = floor(usd / price, 2 decimales) — evita errores de tick
+            tokens = round(int(usd / snapped * 100) / 100, 2)
+            if tokens <= 0:
+                return None
+            log.debug(f"  BUY snapped={snapped} tokens={tokens} usd_real={tokens*snapped:.4f}")
+            args  = CreateOrderArgs(token_id=token_id, price=snapped, size=tokens, side="BUY")
+            order = self._clob.create_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.GTC)
         except Exception as e:
@@ -322,14 +325,15 @@ class PolyClient:
             log.error("ClobClient no disponible")
             return None
         try:
-            from py_clob_client.clob_types import MarketOrderArgs, OrderType
+            from py_clob_client.clob_types import CreateOrderArgs, OrderType
             tick = self._get_tick(token_id)
             snapped = self._snap_price(price, tick)
-            # Para SELL: amount = qty de tokens * precio = USD a recibir
-            sell_usd = round(qty * snapped, 4)
-            log.debug(f"  SELL price raw={price:.6f} snapped={snapped} tick={tick} sell_usd={sell_usd}")
-            args  = MarketOrderArgs(token_id=token_id, amount=sell_usd, side="SELL", price=snapped)
-            order = self._clob.create_market_order(args)
+            tokens = round(qty, 2)
+            if tokens <= 0:
+                return None
+            log.debug(f"  SELL snapped={snapped} tokens={tokens}")
+            args  = CreateOrderArgs(token_id=token_id, price=snapped, size=tokens, side="SELL")
+            order = self._clob.create_order(args)
             if order:
                 return self._clob.post_order(order, OrderType.GTC)
         except Exception as e:
