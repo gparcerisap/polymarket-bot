@@ -307,7 +307,7 @@ class PolyClient:
             args  = MarketOrderArgs(token_id=token_id, amount=usd, side="BUY", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
-                return self._clob.post_order(order, OrderType.FOK)
+                return self._clob.post_order(order, OrderType.GTC)
         except Exception as e:
             log.error(f"market_buy {token_id[:14]}: {e}")
             log.debug(traceback.format_exc())
@@ -331,7 +331,7 @@ class PolyClient:
             args  = MarketOrderArgs(token_id=token_id, amount=sell_usd, side="SELL", price=snapped)
             order = self._clob.create_market_order(args)
             if order:
-                return self._clob.post_order(order, OrderType.FOK)
+                return self._clob.post_order(order, OrderType.GTC)
         except Exception as e:
             log.error(f"market_sell {token_id[:14]}: {e}")
             log.debug(traceback.format_exc())
